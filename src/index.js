@@ -1,8 +1,8 @@
 const canvas = document.getElementById('root');
 const canvasCtx = canvas.getContext('2d');
 
-const WIDTH = 10;
-const SQUARE_SIZE = 60;
+const WIDTH = 20;
+const SQUARE_SIZE = 30;
 
 canvas.width = WIDTH * SQUARE_SIZE;
 canvas.height = canvas.width;
@@ -14,7 +14,7 @@ const squareToPixelSpace = (squarePos, square_size) => {
   const {x, y} = squarePos;
   return {
     x: x * square_size,
-    y: fixY(y*square_size, 600),
+    y: fixY(y*square_size, WIDTH * SQUARE_SIZE),
   };
 };
 
@@ -58,13 +58,10 @@ const createVerticalLines = (context, start, end, spacing, height) => {
     context.lineTo(x, height);
   }
 };
-
-const squareRoot = (x) => Math.sqrt(x);
-const derivative = (x) => 1 / (2 * squareRoot(x));
-const TwoPow = (x) => x * x;
+const twoPow = (x) => Math.sin(x);
 
 const createAxis = (context, spacing, width, height) => {
-  context.strokeStyle = 'rgb(255, 0, 0)';
+  context.strokeStyle = 'rgb(255, 255, 255)';
   const middleWidth = width / 2.0;
   const middleHeight = height / 2.0;
 
@@ -76,10 +73,13 @@ const createAxis = (context, spacing, width, height) => {
 };
 
 const createGrid = (context, squares, squareSide) => {
-  context.strokeStyle = 'rgb(0, 0, 255)';
   const width = squares * squareSide;
   const height = squares * squareSide;
+  context.lineWidth = 1;
+  context.fillStyle = 'rgb(0, 0, 0)';
+  context.fillRect(0, 0, width, height);
   context.beginPath();
+  context.strokeStyle = 'rgb(128, 128, 128)';
   createVerticalLines(context, 0, width, squareSide, height);
   createHorizontalLines(context, 0, height, squareSide, width);
   context.stroke();
@@ -87,16 +87,9 @@ const createGrid = (context, squares, squareSide) => {
   createAxis(context, squareSide, width, height);
   context.stroke();
   context.beginPath();
-  context.strokeStyle = 'rgb(0, 255, 0)';
-  plotFunction(context, {x: 5, y: 5}, 0, 5, squareRoot, SQUARE_SIZE, 1, 0.005);
-  context.stroke();
-  context.beginPath();
-  context.strokeStyle = 'rgb(0, 100, 255)';
-  plotFunction(context, {x: 5, y: 5}, 0, 5, derivative, SQUARE_SIZE, 1, 0.005);
-  context.stroke();
-  context.beginPath();
+  context.lineWidth = 2;
   context.strokeStyle = 'rgb(255, 100, 0)';
-  plotFunction(context, {x: 5, y: 5}, -5, 5, TwoPow, SQUARE_SIZE, 1, 0.005);
+  plotFunction(context, {x: squares / 2, y: squares / 2}, -6*Math.PI, 6*Math.PI, twoPow, SQUARE_SIZE, 1, 0.05);
   context.stroke();
 };
 
