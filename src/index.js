@@ -30,16 +30,21 @@ const mathToPixel = (mathPos, origin, square_step, square_size) => {
 };
 
 // Plots a function.
-const plotFunction = (context, originPos, start, end, f, spacing, square_step, sampling_freq) => {
+const plotFunction = (context, originPos, start, end, f, spacing, square_step, sampling_freq, f_color) => {
   const points = [];
   for(let x = start; x < end; x += sampling_freq) {
     const y = f(x);
-    points.push({x, y});
+    const color = f_color(y, 10);
+    points.push({x, y, color});
   }
 
   points.forEach((point) => {
+      const {color} = point;
     let {x, y} = mathToPixel(point, originPos, square_step, spacing);
     context.lineTo(x, y);
+    context.stroke();
+    context.beginPath();
+    context.strokeStyle = color || 'rgb(180, 0, 0)';
     context.moveTo(x, y);
   });
 };
@@ -58,18 +63,73 @@ const createVerticalLines = (context, start, end, spacing, height) => {
     context.lineTo(x, height);
   }
 };
-const twoPow = (x) => Math.sin(x);
+
+const temperatureFunc = (lastValues, constant) => {
+    const resultArr = lastValues.map((el, index) => {
+        if(index == 0) {
+            const nextEl = lastValues[index + 1];
+            const middlePoint = (nextEl.y - el.y) / 2;
+            return {x: el.x, y: el.y + constant * (middlePoint)};
+        }
+
+        if(index == lastValues.length - 1) {
+            const earlierEl = lastValues[index - 1];
+            const middlePoint = (earlierEl.y - el.y) / 2;
+            return {x: el.x, y: el.y + constant * (middlePoint)};
+        }
+
+        const earlierEl = lastValues[index - 1];
+        const nextEl = lastValues[index + 1];
+
+        const middlePointEarlier = (earlierEl.y - el.y) / 2;
+        const middlePointNext = (nextEl.y - el.y) / 2;
+        const totalMiddle = (middlePointEarlier + middlePointNext) / 2;
+        return {x: el.x, y: el.y + constant * (totalMiddle)};
+    });
+    return ([(x) => {
+        let closestDistance = WIDTH;
+        let element = resultArr[0];
+        resultArr.forEach((el) => {
+            const distance = Math.abs(el.x - x);
+            if(distance < closestDistance) {
+                closestDistance = distance;
+                element = el;
+            }
+        });
+        if(!element) {
+            return x.y;
+        }
+
+        return element.y;
+    }, resultArr]);
+};
+
+// const twoPow = (x) => Math.sin(x);
 
 const createAxis = (context, spacing, width, height) => {
   context.strokeStyle = 'rgb(255, 255, 255)';
-  const middleWidth = width / 2.0;
-  const middleHeight = height / 2.0;
+  const middleWidth = SQUARE_SIZE;
+  const middleHeight = height - SQUARE_SIZE;
 
   context.moveTo(0, middleHeight);
   context.lineTo(width, middleHeight);
 
   context.moveTo(middleWidth, 0);
   context.lineTo(middleWidth, height);
+};
+
+const initFunction = (size, start, end, maxY, minY) => {
+    const elements = [];
+    const spacing = (end - start) / size;
+    for(let x = 0; x <= end; x += spacing) {
+        const element = {
+            x,
+            y: Math.min(1 / (10 * x), maxY),
+        };
+        elements.push(element);
+    }
+
+    return elements;
 };
 
 const createGrid = (context, squares, squareSide) => {
@@ -86,17 +146,30 @@ const createGrid = (context, squares, squareSide) => {
   context.beginPath();
   createAxis(context, squareSide, width, height);
   context.stroke();
+};
+
+const colorFunction = (y, maxY) => {
+    const colorStep = 255 / maxY;
+    const t = y * colorStep;
+    return `rgb(${t}, 0, ${255 - t})`;
+};
+
+function updateCanvas(context, oldElems) {
+    let elements = oldElems;
+    if(!elements) {
+        elements = initFunction(200, 0, 10, 10, 0);
+    }
+    const result = temperatureFunc(elements, 0.15);
+    let tempFunction = result[0];
+    elements = result[1];
+  createGrid(context, WIDTH, SQUARE_SIZE);
   context.beginPath();
   context.lineWidth = 2;
   context.strokeStyle = 'rgb(255, 100, 0)';
-  plotFunction(context, {x: squares / 2, y: squares / 2}, -6*Math.PI, 6*Math.PI, twoPow, SQUARE_SIZE, 1, 0.05);
+  plotFunction(context, {x: 1, y: 1}, 0, 10, tempFunction, SQUARE_SIZE, 0.5, 0.1, colorFunction);
   context.stroke();
-};
-
-function updateCanvas(context) {
-  createGrid(context, WIDTH, SQUARE_SIZE);
   requestAnimationFrame(() => {
-    updateCanvas(context);
+    updateCanvas(context, elements);
   });
 }
 
